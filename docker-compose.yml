@@ -1,0 +1,28 @@
+version: "3.7"
+
+x-postgres-env: &postgres-env
+  DATABASE_URL: "ecto://postgres:postgres@pg/ex_audit_test"
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_DB: ex_audit_test
+
+services:
+  pg:
+    image: postgis/postgis:11-3.0-alpine
+    restart: always
+    environment:
+      <<: *postgres-env
+    ports:
+      - "5555:5432"
+    volumes:
+      - exaudit-data:/var/lib/postgresql/data
+    networks:
+      - exaudit-dev
+
+volumes:
+  exaudit-data:
+
+networks:
+  exaudit-dev:
+    external: True
+

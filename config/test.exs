@@ -6,7 +6,8 @@ config :ex_audit, ExAudit.Test.Repo,
   username: "postgres",
   password: "postgres",
   database: "ex_audit_test",
-  hostname: "localhost",
+  hostname: "127.0.0.1",
+  port: 5555,
   pool_size: 10
 
 config :logger, level: :info

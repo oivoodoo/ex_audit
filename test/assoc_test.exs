@@ -4,6 +4,7 @@ defmodule AssocTest do
   import Ecto.Query
 
   alias ExAudit.Test.{Repo, Version, BlogPost, Comment, Util, User, UserGroup}
+  alias ExAudit.Test.BlogPost.Section
 
   test "comment lifecycle tracked" do
     user = Util.create_user()
@@ -90,6 +91,52 @@ defmodule AssocTest do
 
     # 3 created, 3 deleted
     assert length(versions) == 6
+  end
+
+  test "should track properly embded assoc" do
+    params = %{title: "Welcome!"}
+
+    changeset = BlogPost.changeset(%BlogPost{}, params)
+    {:ok, blog_post} = Repo.insert(changeset)
+    assert Repo.history(blog_post) |> Enum.count() == 1
+
+    changeset =
+      BlogPost.changeset(blog_post, %{
+        sections: [
+          %{title: "title 1", text: "text 1"}
+        ]
+      })
+    {:ok, blog_post} = Repo.update(changeset)
+    assert Repo.history(blog_post) |> Enum.count() == 2
+
+    changeset =
+      BlogPost.changeset(blog_post, %{
+        title: "title 2"
+      })
+    {:ok, blog_post} = Repo.update(changeset)
+    assert Repo.history(blog_post) |> Enum.count() == 3
+
+    [version1, version2, version3] = Repo.history(blog_post)
+    assert Repo.get!(BlogPost, blog_post.id).title == "title 2"
+    Repo.revert(version1)
+    assert Repo.history(blog_post) |> Enum.count() == 4
+    assert Repo.get!(BlogPost, blog_post.id).title == "Welcome!"
+
+    changeset =
+      BlogPost.changeset(blog_post, %{
+        sections: []
+      })
+    {:ok, blog_post} = Repo.update(changeset)
+    assert Repo.history(blog_post) |> Enum.count() == 5
+    assert Repo.get!(BlogPost, blog_post.id).sections == []
+
+    [version1, version2, version3, version4, version5] = Repo.history(blog_post)
+    Repo.revert(version2)
+    assert Repo.history(blog_post) |> Enum.count() == 6
+
+    [section1] = Repo.get!(BlogPost, blog_post.id).sections
+    assert section1.title == "title 1"
+    assert section1.text == "text 1"
   end
 
   test "should return changesets from constraint errors" do

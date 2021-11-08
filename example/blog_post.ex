@@ -6,7 +6,7 @@ defmodule ExAudit.Test.BlogPost do
     field :title, :string
 
     belongs_to :author, ExAudit.Test.User
-    embeds_many :sections, ExAudit.Test.BlogPost.Section
+    embeds_many :sections, ExAudit.Test.BlogPost.Section, on_replace: :delete
 
     has_many :comments, ExAudit.Test.Comment, on_delete: :delete_all
 
@@ -24,7 +24,7 @@ defmodule ExAudit.Test.BlogPost do
 
     def changeset(struct, params \\ %{}) do
       struct
-      |> cast(params, [:title, :text])
+      |> cast(params |> ExAudit.Map.ensure(), [:title, :text])
     end
   end
 
