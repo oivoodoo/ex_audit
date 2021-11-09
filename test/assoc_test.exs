@@ -190,6 +190,8 @@ defmodule AssocTest do
     assert Repo.history(blog_post) |> Enum.count() == 3
 
     assert [section1] = Repo.get!(BlogPost, blog_post.id).sections
+    assert section1.title == "title 1"
+    assert section1.text == "text 1"
   end
 
   test "should return changesets from constraint errors" do
