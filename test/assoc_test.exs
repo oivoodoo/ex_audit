@@ -6,6 +6,8 @@ defmodule AssocTest do
   alias ExAudit.Test.{Repo, Version, BlogPost, Comment, Util, User, UserGroup}
   alias ExAudit.Test.BlogPost.Section
 
+  require Logger
+
   test "comment lifecycle tracked" do
     user = Util.create_user()
 
@@ -137,6 +139,57 @@ defmodule AssocTest do
     [section1] = Repo.get!(BlogPost, blog_post.id).sections
     assert section1.title == "title 1"
     assert section1.text == "text 1"
+
+    Logger.info(inspect(Enum.map(Repo.history(blog_post), fn v -> v.action end)))
+  end
+
+  test "should track properly embded assoc for only embeded assoc changes" do
+    params = %{title: "Welcome!"}
+
+    changeset = BlogPost.changeset(%BlogPost{}, params)
+    {:ok, blog_post} = Repo.insert(changeset)
+    assert Repo.history(blog_post) |> Enum.count() == 1
+
+    changeset =
+      BlogPost.changeset(blog_post, %{
+        sections: [
+          %{title: "title 1", text: "text 1"}
+        ]
+      })
+    {:ok, blog_post} = Repo.update(changeset)
+    assert Repo.history(blog_post) |> Enum.count() == 2
+
+    [version1, version2] = Repo.history(blog_post)
+    Repo.revert(version1)
+    assert Repo.history(blog_post) |> Enum.count() == 3
+
+    assert [] = Repo.get!(BlogPost, blog_post.id).sections
+  end
+
+  test "should track properly embded assoc for only embeded assoc changes with sections" do
+    params = %{
+      title: "Welcome!",
+      sections: [
+        %{title: "title 1", text: "text 1"}
+      ]
+    }
+
+    changeset = BlogPost.changeset(%BlogPost{}, params)
+    {:ok, blog_post} = Repo.insert(changeset)
+    assert Repo.history(blog_post) |> Enum.count() == 1
+
+    changeset =
+      BlogPost.changeset(blog_post, %{
+        sections: []
+      })
+    {:ok, blog_post} = Repo.update(changeset)
+    assert Repo.history(blog_post) |> Enum.count() == 2
+
+    [version1, version2] = Repo.history(blog_post)
+    Repo.revert(version1)
+    assert Repo.history(blog_post) |> Enum.count() == 3
+
+    assert [section1] = Repo.get!(BlogPost, blog_post.id).sections
   end
 
   test "should return changesets from constraint errors" do
